@@ -1,0 +1,39 @@
+{
+  "configuration": {
+    "appenders": {
+      "Console": {
+        "name": "stdout",
+        "target": "SYSTEM_OUT",
+        "PatternLayout": {
+          "pattern": "[%d{HH:mm:ss}][%-5level] - %msg%n"
+        }
+      },
+      "RollingFile": {
+        "name": "log",
+        "fileName": "/var/log/cerberus/cerberus.log",
+        "filePattern": "/var/log/cerberus/cerberus-%d{MM-dd-yy-HH-mm}.log.gz",
+        "PatternLayout": {
+          "pattern": "[%d{HH:mm:ss}][%-5level] - %msg%n"
+        },
+        "Policies": {
+          "SizeBasedTriggeringPolicy": {
+            "size": "10 MB"
+          }
+        },
+        "DefaultRolloverStrategy": {
+          "max": "10"
+        }
+      }
+    },
+    "loggers": {
+      "root": {
+        "level": "info",
+        "appender-ref": [
+          {"ref":  "stdout", "level": "error"},
+          {"ref":  "log", "level": "info"}
+        ]
+
+      }
+    }
+  }
+}

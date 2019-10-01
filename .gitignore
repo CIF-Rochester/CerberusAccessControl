@@ -1,0 +1,31 @@
+# Gradle
+/.gradle
+/gradle
+/gradlew
+/gradlew.bat
+/build
+
+# IDEs
+/.idea
+/eclipse
+/.settings
+/.metadata
+/.classpath
+/.project
+/bin
+
+# Package Files
+*.jar
+*.war
+*.ear
+
+# Program generated logs
+*.log
+*.log.gz
+
+# Virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+*.launch
+
+# Misc
+/grimreaper

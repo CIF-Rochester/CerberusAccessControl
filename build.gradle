@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+mainClassName = 'edu.rochester.cif.cerberus.Cerberus'
+
+group 'edu.rochester.cif.cerberus'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+jar {
+    manifest {
+        attributes "Main-Class": "$mainClassName"
+    }
+
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    //JSON parsing, also required for our log4j2 config
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.4.1'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.4.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.4.1'
+
+    //using old version of jserialcomm to be compatible with Ben's code
+    implementation 'com.fazecast:jSerialComm:1.3.11'
+
+    //netty is used for communicating with remote management script
+    implementation 'io.netty:netty-all:4.0.4.Final'
+
+    //better logging that I don't intend to write
+    implementation 'org.apache.logging.log4j:log4j-api:2.12.1'
+    implementation 'org.apache.logging.log4j:log4j-core:2.12.1'
+
+    //sqlite driver because we don't need anything more powerful than it
+    implementation 'org.xerial:sqlite-jdbc:3.28.0'
+}
