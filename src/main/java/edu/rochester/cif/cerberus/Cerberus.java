@@ -1,6 +1,9 @@
 package edu.rochester.cif.cerberus;
 
 import edu.rochester.cif.cerberus.ldap.LDAPServer;
+import edu.rochester.cif.cerberus.readers.ICardReader;
+import edu.rochester.cif.cerberus.readers.debug.DebugCardReader;
+import edu.rochester.cif.cerberus.readers.elcom.ElcomCardReader;
 import edu.rochester.cif.cerberus.settings.EnumRunMode;
 import edu.rochester.cif.cerberus.settings.Reference;
 import edu.rochester.cif.cerberus.settings.Settings;
@@ -10,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.lookup.MainMapLookup;
 
 import javax.naming.NamingException;
+import java.io.IOException;
 
 /**
  * Main class for the program
@@ -79,12 +83,12 @@ public class Cerberus {
             System.exit(-1);
         }
         MainMapLookup.setMainArguments(
-                cli.hasOption("debug") ? "trace" : "info"
+                cli.hasOption("verbose") ? "trace" : "info"
         );
 
         //Don't call the app log until the verbosity has been choosen
         Logger log = getAppLog();
-        log.info("Starting Cerberus...");
+        log.trace("Cerberus says hello!");
 
         //Load application configuration files
         Settings.init(cli);
@@ -101,7 +105,7 @@ public class Cerberus {
                 System.out.println(ref.ABOUT_MSG);
                 System.exit(0);
             default:
-                log.trace("Starting listen loop in {} mode",
+                log.info("Starting Cerberus in {} mode",
                         settings.RUN_MODE == EnumRunMode.RUN ? "normal" : "debug");
                 startListenLoop();
         }
@@ -116,6 +120,7 @@ public class Cerberus {
     private static void startListenLoop() {
         Logger log = getAppLog();
         Logger access = getAccessLog();
+        Settings settings = Settings.getInstance();
         LDAPServer server = new LDAPServer();
         try {
             server.connect();
@@ -124,10 +129,82 @@ public class Cerberus {
             System.exit(-1);
         }
 
+        ICardReader reader;
+        // Initialize the reader and start things up
+        reader = settings.RUN_MODE == EnumRunMode.RUN ? new ElcomCardReader(settings.DEVICE) : new DebugCardReader();
+        reader.registerStatusChangedCallback((newStatus) -> {
+            // When a change in status occurs, act on the new status
+            // Note that the actual state is not stored - only changes are acted upon
+            // Any real concept of "state" is maintained by the card reader class
+            switch (newStatus) {
+                case IDLE:
+                    log.trace("Reader is now ready");
+                    break;
+                case CARD_WAITING:
+                    // Wait a moment before querying the ID, to prevent the reader from locking up
+                    // TODO maybe look for a cleaner solution to this issue?
+                    try {
+                        Thread.sleep(200);
+                    }
+                    catch (InterruptedException e) {
+                        log.trace("Card wait was interrupted!", e);
+                    }
+
+                    String data = reader.getID();
+                    if (data == null)
+                        break;
+                    // If data from card reader is not the right format of a UR ID card, reject it
+                    // The day the school starts using non-numeric swipe cards is the day I eat my hat - Jack
+                    log.trace("Checking ID format");
+                    if (!data.matches("^[0-9]{19}$")) {
+                        access.warn("Denied access to ID of wrong format: {}", data);
+                        reader.denyAccess();
+                        break;
+                    }
+
+                    String id = data.substring(1, 9);
+                    String lcc = data.substring(9, 11);
+
+                    try {
+                        String result = server.queryUsername(id, lcc);
+                        if (result == null) {
+                            access.warn("Denied access to ID: {} (LCC {})", id, lcc);
+                            reader.denyAccess();
+                        }
+                        else {
+                            access.info("Granted access to {} (ID: {} LCC: {})", result, id, lcc);
+                            reader.grantAccess();
+                        }
+                    }
+                    catch (Exception e) {
+                        log.error("LDAP query failed with the following error:", e);
+                        reader.denyAccess();
+                    }
+                    break;
+                case TAMPER:
+                    access.warn("Tamper switch has been tripped!");
+                    break;
+                case FORCED_OPEN:
+                    access.warn("Door has been forced open!");
+                    break;
+                case LINK_LOST:
+                    access.warn("Link to reader has been lost!");
+                    break;
+                case RECOVERED_FROM_POWER_FAILURE:
+                    access.warn("The reader has recovered from a power failure!");
+            }
+        });
+        reader.open();
+
         // Close all connections on shutdown
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
+                log.trace("Exit signal received, closing connection to reader");
+                reader.close();
+                log.trace("Closing ldap connection");
                 server.closeConnection();
+            } catch (IOException e) {
+                log.error("An IO error occured while closing the reader connection on shutdown", e);
             } catch (NamingException e) {
                 log.trace("An error occurred while closing the ldap connection on shutdown", e);
             }
