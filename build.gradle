@@ -5,7 +5,7 @@ plugins {
 mainClassName = 'edu.rochester.cif.cerberus.Cerberus'
 
 group 'edu.rochester.cif.cerberus'
-version '1.0'
+version '1.1'
 
 compileJava {
     sourceCompatibility = '1.8'
@@ -14,15 +14,12 @@ compileJava {
 
 processResources {
     inputs.property 'version', project.version
+    duplicatesStrategy 'include'
 
     from (sourceSets.main.resources.srcDirs) {
         include 'app.properties'
 
         expand 'VERSION': project.version
-    }
-
-    from (sourceSets.main.resources.srcDirs) {
-        exclude 'app.properties'
     }
 }
 

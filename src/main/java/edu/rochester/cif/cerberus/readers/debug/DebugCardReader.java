@@ -56,10 +56,14 @@ public class DebugCardReader implements ICardReader {
                 if (scanner.hasNext()) {
                     data = scanner.nextLine();
                     if (data.equals(".quit"))
-                        return;
-                    callback.statusChanged(EnumReaderStatus.CARD_WAITING);
+                        break;
+                    if (!data.isEmpty())
+                        callback.statusChanged(EnumReaderStatus.CARD_WAITING);
+                } else {
+                    break;
                 }
             } while (!shouldExit);
+            scanner.close();
         });
         listenThread.start();
     }
