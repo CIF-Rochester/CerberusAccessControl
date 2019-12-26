@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Configuration>
+    <Appenders>
+        <Console name="stdout" target="SYSTEM_OUT">
+            <PatternLayout pattern="[%d{HH:mm:ss}][%-5level] - %msg%n"/>
+        </Console>
+        <RollingFile name="access_log" fileName="/var/log/cerberus/access.log"
+                     filePattern="/var/log/cerberus/access-%d{MM-dd-yy-HH-mm}.log.gz">
+            <PatternLayout pattern="[%d{HH:mm:ss}][%-5level] - %msg%n"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="25"/>
+        </RollingFile>
+        <RollingFile name="app_log" fileName="/var/log/cerberus/cerberus.log"
+                     filePattern="/var/log/cerberus/cerberus-%d{MM-dd-yy-HH-mm}.log.gz">
+            <PatternLayout pattern="[%d{HH:mm:ss}][%-5level] - %msg%n"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="25"/>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <Logger name="access" level="info">
+            <AppenderRef ref="access_log"/>
+        </Logger>
+        <Logger name="app" level="${main:0}">
+            <AppenderRef ref="app_log"/>
+        </Logger>
+        <Root level="trace">
+            <AppenderRef ref="stdout"/>
+        </Root>
+    </Loggers>
+</Configuration>
