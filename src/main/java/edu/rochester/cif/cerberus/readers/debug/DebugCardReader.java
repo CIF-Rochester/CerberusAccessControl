@@ -6,7 +6,6 @@ import edu.rochester.cif.cerberus.readers.ICardReader;
 import edu.rochester.cif.cerberus.readers.IStatusChangedCallback;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
 import java.util.Properties;
 import java.util.Scanner;
 
@@ -16,18 +15,18 @@ import java.util.Scanner;
 public class DebugCardReader implements ICardReader {
     private Logger log = Cerberus.getAppLog();
     private IStatusChangedCallback callback = null;
-    private volatile boolean shouldExit;
+    private volatile boolean shouldHalt;
     private String data = "";
 
     @Override
     public void grantAccess() {
-        log.info("[DebugCardReader]Granted access");
+        log.info("[Debug]Granted access");
         callback.statusChanged(EnumReaderStatus.IDLE);
     }
 
     @Override
     public void denyAccess() {
-        log.info("[DebugCardReader]Denied access");
+        log.info("[Debug]Denied access");
         callback.statusChanged(EnumReaderStatus.IDLE);
     }
 
@@ -47,8 +46,8 @@ public class DebugCardReader implements ICardReader {
 
     @Override
     public void open() {
-        log.trace("[DebugCardReader]Connection opened");
-        Thread listenThread = new Thread(() -> {
+        log.trace("[Debug]Connection opened");
+        new Thread(() -> {
             Scanner scanner = new Scanner(System.in);
             do {
                 System.out.println("Enter a 19 digit serial number ('.quit' to exit): ");
@@ -62,15 +61,14 @@ public class DebugCardReader implements ICardReader {
                 } else {
                     break;
                 }
-            } while (!shouldExit);
+            } while (!shouldHalt);
             scanner.close();
-        });
-        listenThread.start();
+        }).start();
     }
 
     @Override
     public void close() {
-        log.trace("[DebugCardReader]Connection closed");
-        shouldExit = true;
+        log.trace("[Debug]Connection closed");
+        shouldHalt = true;
     }
 }

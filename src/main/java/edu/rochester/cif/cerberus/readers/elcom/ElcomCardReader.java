@@ -1,14 +1,15 @@
 package edu.rochester.cif.cerberus.readers.elcom;
 
+import java.io.IOException;
 import java.util.Properties;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import com.fazecast.jSerialComm.SerialPort;
 
+import edu.rochester.cif.cerberus.Cerberus;
 import edu.rochester.cif.cerberus.readers.ICardReader;
 import edu.rochester.cif.cerberus.readers.EnumReaderStatus;
 import edu.rochester.cif.cerberus.readers.IStatusChangedCallback;
+import org.apache.logging.log4j.Logger;
 
 // GrimReaper - Access controller for the CIF lab
 // Written by Ben Ackerman '18 - Summer 2017
@@ -18,7 +19,7 @@ import edu.rochester.cif.cerberus.readers.IStatusChangedCallback;
 public class ElcomCardReader implements ICardReader {
 
 	private ElcomDataLink link = null;
-	private Timer pollTimer = null;
+	private volatile boolean shouldHalt = false;
 	private EnumReaderStatus status;
 	private IStatusChangedCallback callback = null;
 	private String port;
@@ -29,13 +30,25 @@ public class ElcomCardReader implements ICardReader {
 	
 	@Override
 	public void grantAccess() {
-		String res = link.sendCommand("OA");
+		String res = null;
+	    try {
+			res = link.sendCommand("OA");
+		} catch (IOException e) {
+			Cerberus.getAppLog().error("[Elcom] Failed to read from serial port", e);
+			System.exit(1);
+		}
 		updateStatus(res);
 	}
 
 	@Override
 	public void denyAccess() {
-		String res = link.sendCommand("OD");
+		String res = null;
+		try {
+			res = link.sendCommand("OD");
+		} catch (IOException e) {
+			Cerberus.getAppLog().error("[Elcom] Failed to read from serial port", e);
+			System.exit(1);
+		}
 		updateStatus(res);
 	}
 
@@ -46,7 +59,13 @@ public class ElcomCardReader implements ICardReader {
 
 	@Override
 	public String getID() {
-		return link.sendCommand("R");
+	    try {
+			return link.sendCommand("R");
+		} catch (IOException e) {
+			Cerberus.getAppLog().error("[Elcom] Failed to read from serial port", e);
+			System.exit(1);
+		}
+	    return null;
 	}
 
 	@Override
@@ -55,29 +74,36 @@ public class ElcomCardReader implements ICardReader {
 
 	@Override
 	public void close() {
-		pollTimer.cancel();
+	    shouldHalt = true;
 		link.close();
 	}
 
 	@Override
 	public void open() {
-		// Open the data link (TODO configurable params)
-		link = new ElcomDataLink();
-		link.open(port, 9600, 7, SerialPort.ONE_STOP_BIT, SerialPort.ODD_PARITY, SerialPort.FLOW_CONTROL_DISABLED);
-		status = EnumReaderStatus.IDLE;
-		
-		// Set up polling
-		pollTimer = new Timer();
-		TimerTask pollFunc = new TimerTask() {
-			@Override
-			public void run() {
-				// Query reader status (if no card is waiting)
-				String statusChars = link.sendCommand("?");
+	    // I rewrote this to fail properly if a connection cannot be established
+		// No more waiting in limbo polluting the logs!
+		new Thread(() -> {
+		    Logger log = Cerberus.getAppLog();
+			link = new ElcomDataLink();
+			link.open(port, 9600, 7, SerialPort.ONE_STOP_BIT, SerialPort.ODD_PARITY, SerialPort.FLOW_CONTROL_DISABLED);
+			status = EnumReaderStatus.IDLE;
+			do {
+				String statusChars = null;
+				try {
+					statusChars = link.sendCommand("?");
+				} catch (IOException e) {
+					Cerberus.getAppLog().error("[Elcom] Failed to read from serial port", e);
+					System.exit(1);
+				}
 				updateStatus(statusChars);
-			}
-		};
-		// TODO make poll freq configurable
-		pollTimer.schedule(pollFunc, 0, 400);
+
+				try {
+					Thread.sleep(400);
+				} catch (InterruptedException e) {
+					log.trace("Reader wait was interrupted!", e);
+				}
+			} while (!shouldHalt);
+		}).start();
 	}
 	
 	// Convert the reader's response to a reader state, and run the status-changed callback if necessary

@@ -38,24 +38,20 @@ public class ElcomDataLink implements Closeable {
 		try {
 			comPortReader.close();
 		} catch (IOException e) {
-			Cerberus.getAppLog().error("[ElcomDataLink]Failed to close the serial port:", e);
+			Cerberus.getAppLog().error("[Elcom]Failed to close the serial port:", e);
+		} catch (NullPointerException e){
+			Cerberus.getAppLog().trace("[Elcom]Attempted to close null connection:", e);
 		}
 		comPort.closePort();
 	}
 	
 	// Send a command to the reader, return its response
 	// Throws an exception when a timeout occurs
-	public String sendCommand(String cmdChars) {
+	public String sendCommand(String cmdChars) throws IOException{
 		byte[] cmd = buildCommand(cmdChars);
 		comPort.writeBytes(cmd, cmd.length);
 		String response;
-		try {
-			response = comPortReader.readLine();
-		}
-		catch ( IOException e ) {
-			Cerberus.getAppLog().error("[ElcomDataLink]Failed to read from the serial port:", e);
-			return "";
-		}
+		response = comPortReader.readLine();
 		// Shave off first 2 characters (the address) before returning
 		// TODO maybe verify correct address?
 		if ( response.length() > 2 ) {
