@@ -55,7 +55,10 @@ public class LDAPServer {
      * @return string that is the query, which checks id, lcc and whether an account is locked
      */
     private static String getQueryFilter(String id, String lcc) {
-        return "(&("+ref.LDAP_ID_FIELD+"="+id+")("+ref.LDAP_LCC_FIELD+"="+lcc+")("+ref.LDAP_DISABLED_FIELD+"=FALSE))";
+        return String.format("(&(%s=%s)(%s=%s)(!(%s=TRUE)))",
+                ref.LDAP_ID_FIELD, id,
+                ref.LDAP_LCC_FIELD, lcc,
+                ref.LDAP_DISABLED_FIELD);
     }
 
     private DirContext connection = null;

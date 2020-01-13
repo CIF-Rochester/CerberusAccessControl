@@ -98,7 +98,7 @@ public class ElcomCardReader implements ICardReader {
 				updateStatus(statusChars);
 
 				try {
-					Thread.sleep(400);
+					Thread.sleep(200);
 				} catch (InterruptedException e) {
 					log.trace("Reader wait was interrupted!", e);
 				}
