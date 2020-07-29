@@ -33,5 +33,5 @@ Java 11.
 ## License
 
 This project is licensed under the LGPLv3. If you have any questions, please
-contact the original author Jack Yu <yuydevel at protonmail dot com>.
+contact the original author Jack Yu \<yuydevel at protonmail dot com\>.
 
