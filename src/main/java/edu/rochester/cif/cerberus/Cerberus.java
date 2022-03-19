@@ -153,17 +153,23 @@ public class Cerberus {
                     String data = reader.getID();
                     if (data == null)
                         break;
+                    log.trace("Checking ID format");
+                    String id;
+                    String lcc;
+
                     // If data from card reader is not the right format of a UR ID card, reject it
                     // The day the school starts using non-numeric swipe cards is the day I eat my hat - Jack
-                    log.trace("Checking ID format");
-                    if (!data.matches("^[0-9]{19}$")) {
+                    if (data.matches("^[0-9]{19}$")) { // UofR ID
+                        id = data.substring(1, 9);
+                        lcc = data.substring(9, 11);
+                    } else if (data.matches("^\\d{9}D\\d047$")) { // RIT ID
+                        id = data.substring(0, 9);
+                        lcc = data.substring(10, 11);
+                    } else {
                         access.warn("Denied access to ID of wrong format: {}", data);
                         reader.denyAccess();
                         break;
                     }
-
-                    String id = data.substring(1, 9);
-                    String lcc = data.substring(9, 11);
 
                     try {
                         String result = server.queryUsername(id, lcc);
